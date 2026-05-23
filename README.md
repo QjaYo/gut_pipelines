@@ -27,15 +27,42 @@ covering both fisheye and perspective captures.
     └── points3D.bin
 ```
 
-## Conda environments
+## Setup
 
-Each step requires a specific conda environment:
-- `01_resize_half.py` — PIL only (any env works)
-- `02_make_masks.py` (fisheye only) — `sam3` env, with SAM3 repo as cwd
-- `02_run_hloc.py` / `03_run_hloc.py` — `hloc` env
-- `04_unik3d_priors.py` (fisheye, optional) — `unik3d` env
+The main dependencies (SAM3, hloc, UniK3D) are external repos, not pip
+packages. Each is installed into its own conda environment and used for
+the corresponding step. There is intentionally **no single
+`requirements.txt`** — a flat `pip install` cannot reproduce these envs.
 
-See each pipeline's README for details.
+### External repos to clone and install
+
+Follow each project's install instructions to create the conda env.
+
+| Step | Conda env | External repo |
+|---|---|---|
+| `02_make_masks.py` (fisheye) | `sam3` | [facebookresearch/sam3](https://github.com/facebookresearch/sam3) |
+| `02_run_hloc.py` / `03_run_hloc.py` | `hloc` | [cvg/Hierarchical-Localization](https://github.com/cvg/Hierarchical-Localization) |
+| `04_unik3d_priors.py` (fisheye, optional) | `unik3d` | [lpiccinelli-eth/UniK3D](https://github.com/lpiccinelli-eth/UniK3D) |
+
+### Extra pip packages
+
+Inside each env, install these as needed (most envs already include them):
+
+```bash
+pip install pillow numpy torch tqdm pycolmap plyfile opencv-python
+```
+
+### Per-script env summary
+
+- `01_resize_half.py` — Pillow only; any env works.
+- `02_make_masks.py` (fisheye) — `sam3` env, SAM3 repo as cwd.
+- `02_run_hloc.py` / `03_run_hloc.py` — `hloc` env.
+- `04_unik3d_priors.py` (fisheye, optional) — `unik3d` env.
+- `05_normals_from_points.py` (fisheye, optional) — any env with `numpy`,
+  `torch`, `pillow`.
+- `utils/sparse_cleanup/*.py` — any env with `pycolmap`, `plyfile`, `numpy`.
+
+See each pipeline's README for the exact run commands.
 
 ## Trainers
 
