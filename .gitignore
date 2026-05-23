@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+
+# Local-only working folders (see utils/README.md)
+utils/research/
+utils/tmp/
+
+# OS / editor
+.DS_Store
+*.swp
