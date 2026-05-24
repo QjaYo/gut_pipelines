@@ -134,6 +134,8 @@ def main():
                          "smaller / faster, vitg for higher quality.")
     ap.add_argument("--force", action="store_true",
                     help="Re-generate even if outputs already exist.")
+    ap.add_argument("--max-images", type=int, default=0,
+                    help="Process only the first N images (0 = all).")
     args = ap.parse_args()
 
     root = Path(args.root)
@@ -161,15 +163,20 @@ def main():
                   f"Pass --force to re-generate.")
             return
 
-    # Read OPENCV_FISHEYE intrinsics from hloc and build a UniK3D Fisheye624.
-    # The camera object is shared across all images (this pipeline assumes
-    # a single physical fisheye lens — same convention as step 3's `--shared`
-    # hloc reconstruction).
+    # Read hloc-refined OPENCV_FISHEYE intrinsics; the Fisheye624 camera object
+    # is rebuilt per image inside the loop (see note below).
     intrinsics = read_opencv_fisheye_intrinsics(root / "sparse" / "0" / "cameras.bin")
     from unik3d.models import UniK3D   # imported here so --help works without torch
     print(f"Loading UniK3D ({args.model}) ...")
     model = UniK3D.from_pretrained(args.model).cuda().eval()
-    camera = make_unik3d_fisheye(intrinsics, device="cuda")
+
+    # NOTE: UniK3D's base Camera.crop / .resize mutate self.K and self.params
+    # in place (and Fisheye624 / OPENCV inherit them unchanged). model.infer()
+    # calls both internally, so reusing one camera object across calls causes
+    # fx, fy, cx, cy to drift every iteration — fx is multiplied by
+    # resize_factor (~0.26 for 2992² fisheye) each call and hits 0 within ~15
+    # images, after which depths come back all-NaN. Rebuild a fresh camera
+    # per image to dodge it. (Verified in UniK3D 0.x.)
 
     print(f"Processing {len(files)} images ...")
     for i, f in enumerate(files, 1):
@@ -181,6 +188,8 @@ def main():
 
         rgb = np.array(Image.open(f).convert("RGB"))                   # (H, W, 3)
         rgb_t = torch.from_numpy(rgb).permute(2, 0, 1).float().cuda()   # (3, H, W)
+
+        camera = make_unik3d_fisheye(intrinsics, device="cuda")
 
         with torch.no_grad():
             pred = model.infer(rgb_t, camera=camera)

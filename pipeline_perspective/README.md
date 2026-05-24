@@ -33,7 +33,19 @@ python 02_run_hloc.py --root $DATA
 # → $DATA/sparse/0/{cameras,images,points3D}.bin
 # → $DATA/hloc_cache/   (rerun cache)
 
-# 3) Train (example: LichtFeld-Studio)
+# 3) (optional) UniK3D depth + per-pixel 3D points — for d+n supervised training
+#    Reads hloc OPENCV intrinsics from sparse/0/cameras.bin
+#    155 images ~5 min (vit-l)
+conda activate unik3d
+python 03_unik3d_priors.py --root $DATA
+# → $DATA/mono_depth/<stem>_aligned.npy
+# → $DATA/unik3d_points/<stem>.npy
+
+# 4) (optional) surface normals from UniK3D 3D points
+python 04_normals_from_points.py --root $DATA
+# → $DATA/normals_from_pretrain/<stem>.png
+
+# 5) Train (example: LichtFeld-Studio, vanilla; step 3-4 not needed)
 cd ~/Development/LichtFeld-Studio
 build/LichtFeld-Studio \
     -d $DATA \
@@ -41,6 +53,12 @@ build/LichtFeld-Studio \
     --strategy mcmc \
     --enable-mip \
     --train --headless
+
+# Or train with d+n supervision (gsplat gut/ trainer, needs step 3-4 outputs):
+#  python ~/Development/gsplat_gut/examples/gut/simple_trainer.py mcmc \
+#     --data-dir $DATA --result-dir $DATA/output_dn \
+#     --camera-model pinhole \
+#     --use-mono-depth-loss --use-mono-normal-loss --disable-video
 ```
 
 ## Downsampling guidance
